@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Viajes de Ruta</title>
+</head>
+<style>
+
+</style>
+<body>
+    <form id="form">
+        <div>
+            <label>Compañia</label>
+            <input type="text" id="empresaUserInput" placeholder="Ingrese la empresa de viaje" required>
+            <br>
+            <input type="text" id="ruta" placeholder="Ingrese la Ruta" required>
+            <br>
+            <input type="text" id="viajeros" placeholder="Ingrese viajeros" required>
+            <br>
+            <input type="text" id="vehiculo" placeholder="Ingrese el vehiculo" required>
+            <button type="submit">Enviar Viaje</button>
+        </div>
+    </form>
+    <div>
+        <ul id="display"></ul>
+    </div>
+    <div>
+        <div class="alert"  id="message"></div>
+    </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(()=>{
+            const display = $("#display");
+            const form = $("#form");
+            const empresaUserInput = $("#empresaUserInput");
+            //Agregar los inputs
+            const message = $("#message");
+            message.hide();
+
+            const displayMessage = (flag,msg)=>{
+                // successful
+                if(flag){
+                    message.removeClass('alert-danger');
+                    message.addClass('alert-success');
+                    message.html(msg);
+                    message.show();
+                }
+                else{
+                    message.removeClass('alert-success');
+                    message.addClass('alert-danger');
+                    message.html(msg);
+                    message.show();
+                }
+            }
+ 
+            const getempresas = ()=>{
+                fetch('/consultar',{method : "get"}).then((response)=>{
+                    return response.json();
+                }).then((data)=>{
+                    console.log(data);
+                    displayempresas(data);
+                });
+            }
+
+            getempresas();
+
+            const resetempresasInput = ()=>{
+                empresaUserInput.val('');
+            }
+ 
+            const editempresa = (empresa,empresaID,editID)=>{
+             
+                let editBtn = $(`#${editID}`);
+              
+                    editBtn.click(()=>{
+                    fetch(`/${empresa._id}`,{
+                        method : "put",
+                        headers : {
+                            "Content-Type" : "application/json; charset=utf-8" 
+                        },
+                        body : JSON.stringify({empresa : empresaUserInput.val()})
+
+                    }).then((response)=>{
+                        return response.json();
+                    }).then((data)=>{
+                        if(data.ok == 1){
+                            let empresaIndex = $(`#${empresaID}`);
+                            empresaIndex.html(data.value.empresa);
+                            resetempresasInput();
+                        }
+                    });
+                });
+                
+              
+            }
+
+
+            const deleteempresa = (empresa,listItemID,deleteID)=>{
+                let deleteBtn = $(`#${deleteID}`);
+                deleteBtn.click(()=>{
+                    fetch(`/${empresa._id}`,{
+                        method: "delete"
+                    }).then((response)=>{
+                        return response.json();
+                    }).then((data)=>{
+                        if(data.ok == 1){
+                            $(`#${listItemID}`).remove();
+                        }
+                    });
+                });
+            }
+
+
+            const buildIDS = (empresa)=>{
+                return {
+                    editID : "edit_" + empresa._id,
+                    deleteID : "delete_" + empresa._id,
+                    listItemID : "listItem_" + empresa._id,
+                    empresaID : "empresa_" + empresa._id
+                }
+            }
+
+            const buildTemplate = (empresa,ids)=>{
+                return `<li id="${ids.listItemID}">
+                            <div>
+                                <div  id="${ids.empresaID}">${empresa.empresa}</div>
+                                <div>
+                                    <button type="button" id="${ids.editID}">Editar</button>
+                                    <button type="button" id="${ids.deleteID}">Eliminar</button>
+                                </div>
+                            </div>
+                       </li>`;
+            }
+
+            const displayempresas = (data)=>{
+                data.forEach((empresa)=>{
+                    let ids = buildIDS(empresa);
+                    display.append(buildTemplate(empresa,ids));
+                    editempresa(empresa,ids.empresaID,ids.editID);
+                    deleteempresa(empresa,ids.listItemID,ids.deleteID);
+                });
+            }
+
+            form.submit((e)=>{
+                e.preventDefault();
+                fetch('/',{
+                    method : 'post',
+                    body : JSON.stringify({empresa : empresaUserInput.val()}),
+                    headers : {
+                        "Content-Type" : "application/json; charset=utf-8"
+                    }
+                }).then((response)=>{
+                    return response.json();
+                }).then((data)=>{
+                    if(!data.error){
+                        if(data.result.ok == 1 && data.result.n == 1){
+                            let ids = buildIDS(data.document);
+                            display.append(buildTemplate(data.document,ids));
+                            editempresa(data.document,ids.empresaID,ids.editID);
+                            deleteempresa(data.document,ids.listItemID,ids.deleteID);
+                            displayMessage(true,data.msg);
+                        }
+                    }
+                    else
+                        displayMessage(false,data.error.message);
+                    resetempresasInput();
+                    
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
